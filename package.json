@@ -12,12 +12,15 @@
     "license": "ISC",
     "dependencies": {
         "bcrypt": "^5.1.1",
+        "bitcoinjs-lib": "^5.2.0",
         "cookie-parser": "^1.4.6",
         "dotenv": "^16.3.1",
+        "ecpair": "^2.0.1",
         "ethers": "^6.13.7",
         "express": "^4.21.2",
         "jsonwebtoken": "^9.0.2",
         "mongoose": "^8.0.1",
-        "nodemon": "^3.0.1"
+        "nodemon": "^3.0.1",
+        "tiny-secp256k1": "^1.1.6"
     }
 }
