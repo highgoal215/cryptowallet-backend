@@ -110,3 +110,22 @@ exports.login = async(req, res) => {
         });
     }
 };
+//logout
+exports.logout = async(req, res) => {
+    try {
+        // Clear the token cookie
+        res.clearCookie("token");
+
+        return res.status(200).json({
+            success: true,
+            message: "User logged out successfully",
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: "Error during logout",
+            error: error,
+        });
+    }
+};

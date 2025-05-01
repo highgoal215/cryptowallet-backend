@@ -5,7 +5,7 @@ const { auth } = require("../middlewares/auth");
 
 // router.post("/signup", signUp);
 // router.post("/login", login);
-router.post("/createwallet", auth, createWallet);
+router.post("/walletcreate", auth, createWallet);
 // //protected routes( middlewares )
 // router.post("/createwallet", auth, (req, res) => {
 //     // res.json({
