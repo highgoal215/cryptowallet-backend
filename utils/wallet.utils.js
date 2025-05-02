@@ -113,27 +113,46 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
             fromPrivateKey,
             toAddress,
             amountInEther,
-            amountType: typeof amountInEther
+            amountType: typeof amountInEther,
         });
 
+        // Create provider with explicit network and timeout settings
         const provider = new ethers.JsonRpcProvider(
-            `https://eth-sepolia.g.alchemy.com/v2/fDVyRKUELxC6pGpxxG2M7eVc7ErbTI4t`
+            `https://eth-sepolia.g.alchemy.com/v2/fDVyRKUELxC6pGpxxG2M7eVc7ErbTI4t`, {
+                name: "sepolia",
+                chainId: 11155111,
+                ensAddress: "0x00000000000C2E074eC69A0dFb2997BA6C7d2e0e",
+            }
         );
+
+        // Test the connection
+        try {
+            await provider.getNetwork();
+            console.log("Successfully connected to Sepolia network");
+        } catch (error) {
+            console.error("Failed to connect to Sepolia network:", error);
+            throw new Error(
+                "Failed to connect to Ethereum network. Please check your internet connection and try again."
+            );
+        }
 
         // Create wallet instance from private key
         const wallet = new Wallet(fromPrivateKey, provider);
         const fromAddress = wallet.address;
+        console.log("Wallet address:", fromAddress);
 
         // Get sender's current balance
         const senderBalance = await provider.getBalance(fromAddress);
+
         console.log("Sender balance in wei:", senderBalance.toString());
 
         // Convert amount to wei
         const amountInWei = ethers.parseEther(amountInEther.toString());
-        console.log("Amount in wei:", amountInWei.toString());
 
         // Get current gas price
         const feeData = await provider.getFeeData();
+
+        console.log("Amount in wei:", amountInWei);
         console.log("Gas price:", feeData.gasPrice.toString());
 
         // Estimate gas limit for this transaction
@@ -141,12 +160,20 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
 
         // Calculate total transaction cost (amount + gas)
         const gasCost = feeData.gasPrice * BigInt(gasLimit);
-        const totalCost = amountInWei + gasCost;
 
+        console.log("BigInt(gasLimit)--->:", BigInt(gasLimit));
+        const totalCost = amountInWei + gasCost;
+        console.log("Type======?:", {
+            Type: typeof totalCost,
+        });
+        console.log("TypeSender======?:", {
+            Type: typeof senderBalance,
+        });
+        console.log("Totalcost-->:", totalCost);
         console.log("Calculated values:", {
             gasCost: gasCost.toString(),
             totalCost: totalCost.toString(),
-            senderBalance: senderBalance.toString()
+            senderBalance: senderBalance.toString(),
         });
 
         // Check if sender has enough balance including gas
@@ -169,34 +196,48 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
         // Create transaction with explicit gas parameters
         const tx = {
             to: toAddress,
-            value: amountInWei.toString(),
-            gasLimit: gasLimit,
-            gasPrice: feeData.gasPrice,
+            value: ethers.parseEther(amountInEther.toString()),
+            // gasLimit: ethers.toBigInt(gasLimit.toString()),
+            // gasPrice: feeData.gasPrice,
         };
+
+        console.log("tx-------------->", tx);
 
         // Retry logic for sending the transaction
-        const sendTransactionWithRetry = async(wallet, tx, retries = 3) => {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    return await wallet.sendTransaction(tx);
-                } catch (error) {
-                    if (i === retries - 1) throw error;
-                    console.log(`Retrying transaction... (${i + 1}/${retries})`);
-                }
-            }
-        };
+        // const sendTransactionWithRetry = async(wallet, tx, retries = 3) => {
+        //     for (let i = 0; i < retries; i++) {
+        //         try {
+        //             return await wallet.sendTransaction(tx);
+        //         } catch (error) {
+        //             if (i === retries - 1) throw error;
+        //             console.log(`Retrying transaction... (${i + 1}/${retries})`);
+        //             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        //         }
+        //     }
+        // };
 
         // Send transaction
-        const transaction = await sendTransactionWithRetry(wallet, tx);
+        // const transaction = await sendTransactionWithRetry(wallet, tx);
+        const transaction = await wallet.sendTransaction(tx);
         console.log(`Transaction hash: ${transaction.hash}`);
 
         // Wait for transaction to be mined
         const receipt = await transaction.wait();
 
+        console.log("reepit-------------->", receipt);
+        console.log("here-------->");
+
         // Calculate actual gas used and cost
         const gasUsed = receipt.gasUsed;
-        const effectiveGasPrice = receipt.effectiveGasPrice;
-        const actualGasCost = gasUsed * effectiveGasPrice;
+        console.log("heasdfasdfre-------->");
+        // const effectiveGasPrice = receipt.effectiveGasPrice;
+        const gasPrice = feeData.gasPrice;
+        if (!gasPrice) {
+            throw new Error("Gas price is missing from the transaction receipt.");
+        }
+        console.log("here-----asdfasdf--->");
+        const actualGasCost = gasUsed * gasPrice;
+        console.log("here-----asdfasdfasdfasdfdsafds--->");
 
         return {
             success: true,
