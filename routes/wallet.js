@@ -1,11 +1,13 @@
 const router = require("express").Router();
 
-const { createWallet } = require("../controller/Wallet");
+const { createWallet, universalEthTransfer } = require("../controller/Wallet");
 const { auth } = require("../middlewares/auth");
 
 // router.post("/signup", signUp);
 // router.post("/login", login);
 router.post("/walletcreate", auth, createWallet);
+// Add the new transfer route
+router.post("/transfer/eth", universalEthTransfer);
 // //protected routes( middlewares )
 // router.post("/createwallet", auth, (req, res) => {
 //     // res.json({
