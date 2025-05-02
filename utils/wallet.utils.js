@@ -155,9 +155,20 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
             gasLimit: gasLimit,
             gasPrice: feeData.gasPrice,
         };
-
+        // Retry logic for sending the transaction
+        const sendTransactionWithRetry = async(wallet, tx, retries = 3) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await wallet.sendTransaction(tx);
+                } catch (error) {
+                    if (i === retries - 1) throw error; // Throw error if all retries fail
+                    console.log(`Retrying transaction... (${i + 1}/${retries})`);
+                }
+            }
+        };
         // Send transaction
-        const transaction = await wallet.sendTransaction(tx);
+        const transaction = await sendTransactionWithRetry(wallet, tx);
+        // const transaction = await wallet.sendTransaction(tx);
         console.log(`Transaction hash: ${transaction.hash}`);
 
         // Wait for transaction to be mined
@@ -171,7 +182,7 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
         return {
             success: true,
             transactionHash: transaction.hash,
-            blockNumber: receipt.blockNumber,
+            blockNumber: receipt.blockNumber.tostring(),
             fromAddress: fromAddress,
             toAddress: toAddress,
             amount: amountInEther,
