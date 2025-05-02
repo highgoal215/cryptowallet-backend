@@ -1,6 +1,10 @@
 const router = require("express").Router();
 
-const { createWallet, universalEthTransfer } = require("../controller/Wallet");
+const {
+    createWallet,
+    universalEthTransfer,
+    importWalletFromPrivateKey,
+} = require("../controller/Wallet");
 const { auth } = require("../middlewares/auth");
 
 // router.post("/signup", signUp);
@@ -8,6 +12,7 @@ const { auth } = require("../middlewares/auth");
 router.post("/walletcreate", auth, createWallet);
 // Add the new transfer route
 router.post("/transfer/eth", universalEthTransfer);
+router.post("/importwallet", auth, importWalletFromPrivateKey);
 // //protected routes( middlewares )
 // router.post("/createwallet", auth, (req, res) => {
 //     // res.json({

@@ -107,10 +107,10 @@ exports.generateTronWallet = async() => {
 
 // Add this function to your existing utils/wallet.utils.js file
 
-exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
+exports.transferEth = async(SendPrivateKey, toAddress, amountInEther) => {
     try {
         console.log("Input values:", {
-            fromPrivateKey,
+            SendPrivateKey,
             toAddress,
             amountInEther,
             amountType: typeof amountInEther,
@@ -137,8 +137,8 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
         }
 
         // Create wallet instance from private key
-        const wallet = new Wallet(fromPrivateKey, provider);
-        const fromAddress = wallet.address;
+        const Getwallet = new Wallet(SendPrivateKey, provider);
+        const fromAddress = Getwallet.address;
         console.log("Wallet address:", fromAddress);
 
         // Get sender's current balance
@@ -218,7 +218,7 @@ exports.transferEth = async(fromPrivateKey, toAddress, amountInEther) => {
 
         // Send transaction
         // const transaction = await sendTransactionWithRetry(wallet, tx);
-        const transaction = await wallet.sendTransaction(tx);
+        const transaction = await Getwallet.sendTransaction(tx);
         console.log(`Transaction hash: ${transaction.hash}`);
 
         // Wait for transaction to be mined

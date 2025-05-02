@@ -9,6 +9,7 @@ const walletSchema = new mongoose.Schema({
     privateKey: { type: String, required: true },
     balance: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
+    lastUpdated: { type: Date, default: Date.now }, // Add this field
 });
 const Wallet = mongoose.model("Wallet", walletSchema);
 

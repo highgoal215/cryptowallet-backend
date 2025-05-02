@@ -1,6 +1,6 @@
 // import Wallet from '../models/wallet';
 // import { generateWallet, generateBitcoinWallet } from '../utils/wallet.utils.js';
-
+const crypto = require("crypto");
 const { transferEth } = require("../utils/wallet.utils");
 const Wallet = require("../models/wallet");
 const {
@@ -44,7 +44,7 @@ exports.createWallet = async(req, res) => {
             accountName,
             address: walletData.address,
             privateKey: walletData.privateKey, // Encrypt in production
-            balance: parseFloat(etjers.formatEther(currentBalance)),
+            balance: 0,
             createdAt: new Date(),
         });
 
@@ -60,42 +60,43 @@ exports.createWallet = async(req, res) => {
 exports.universalEthTransfer = async(req, res) => {
     try {
         // console.log("--------->Request header:", req.headers);
-        const { fromPrivateKey, toAddress, amount } = req.body;
+        const { fromAddress, toAddress, amount } = req.body;
 
         // Validate inputs
-        if (!fromPrivateKey || !toAddress || !amount) {
+        if (!fromAddress || !toAddress || !amount) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required parameters: fromPrivateKey, toAddress, or amount",
+                message: "Missing required parameters: toAddress, or amount",
             });
         }
 
         // Validate Ethereum address format
-        if (!ethers.isAddress(toAddress)) {
+        if (!ethers.isAddress(fromAddress) || !ethers.isAddress(toAddress)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid Ethereum address format",
             });
         }
-
         // Validate amount is a positive number
         const amountNum = parseFloat(amount);
-        console.log("++++++++++++>amountNum:", amountNum);
-        console.log("++++++++++++>amountNum:", amount);
+        console.log("++++++++++++>:", amountNum);
         if (isNaN(amountNum) || amountNum <= 0) {
             return res.status(400).json({
                 success: false,
                 message: "Amount must be a positive number",
             });
         }
-        // const amountInWei = ethers.parseEther(amountNum.toString());
-        // const sendAmount = ethers.utils.parseUnits(amountNum, "ether");
-        // console.log("++++++++++++))))))>amountInWei:", sendAmount);
-        // Execute the transfer with the provided private key
-        // const result = await transferEth(fromPrivateKey, toAddress, amountInWei);
-        const result = await transferEth(fromPrivateKey, toAddress, amountNum);
-
-        if (result.success) {
+        const senderwallet = await Wallet.findOne({ address: fromAddress });
+        if (!senderwallet) {
+            return res.status(400).json({
+                success: false,
+                message: "Sender wallet not found",
+            });
+        }
+        const SendPrivateKey = senderwallet.privateKey;
+        const result = await transferEth(SendPrivateKey, toAddress, amountNum);
+        console.log("++++++++++++>===========>result:", result);
+        if (result.success == true) {
             try {
                 // const Infura_API_Key = process.env.Infura_API_key;
                 const provider = new ethers.JsonRpcProvider(
@@ -103,42 +104,37 @@ exports.universalEthTransfer = async(req, res) => {
                 );
 
                 // Update source wallet balance
-                const sourceWallet = await Wallet.findOne({
+                const senderWallet = await Wallet.findOne({
                     address: result.fromAddress,
-                    addressType: "ETH",
+                    addressType: "ethereum",
                 });
+                console.log("++++++++++++>===========>result+++++++++++++>:");
 
-                if (sourceWallet) {
+                if (senderWallet) {
                     const currentBalance = await provider.getBalance(
-                        sourceWallet.address
+                        result.fromAddress
                     );
-                    console.log("++++++++++++))))))>currentBalance:", currentBalance);
-                    sourceWallet.balance = parseFloat(ethers.formatEther(currentBalance));
-                    await sourceWallet.save();
+                    console.log("++++++++++++>===========>currentBalance:", currentBalance);
+                    senderWallet.balance = parseFloat(ethers.formatEther(currentBalance));
+                    senderWallet.lastUpdated = new Date(); // Update the balance update time
+                    await senderWallet.save();
                 }
 
-                // Update destination wallet balance
-                const destWallet = await Wallet.findOne({
-                    address: toAddress,
-                    addressType: "ETH",
+                // Update receiver wallet
+                const receiverWallet = await Wallet.findOne({
+                    address: result.toAddress,
+                    addressType: "ethereum",
                 });
 
-                if (destWallet) {
-                    const currentBalance = await provider.getBalance(destWallet.address);
-                    destWallet.balance = parseFloat(ethers.formatEther(currentBalance));
-                    await destWallet.save();
-                } else {
-                    // If the destination wallet is not in the database, create a new entry
-                    const currentBalance = await provider.getBalance(toAddress);
-                    await Wallet.create({
-                        user: null, // Assign user if applicable
-                        addressType: "ETH",
-                        accountName: "External Wallet", // Default name
-                        address: toAddress,
-                        privateKey: null, // No private key for external wallets
-                        balance: parseFloat(ethers.formatEther(currentBalance)),
-                        createdAt: new Date(),
-                    });
+                if (receiverWallet) {
+                    const currentBalance = await provider.getBalance(
+                        result.toAddress
+                    );
+                    receiverWallet.balance = parseFloat(
+                        ethers.formatEther(currentBalance)
+                    );
+                    receiverWallet.lastUpdated = new Date(); // Update the balance update time
+                    await receiverWallet.save();
                 }
             } catch (dbError) {
                 console.error("Database update error (non-critical):", dbError);
@@ -155,7 +151,7 @@ exports.universalEthTransfer = async(req, res) => {
                     amount: result.amount,
                     gasUsed: result.gasUsed,
                     gasCost: result.gasCost,
-                    totalCost: result.totalCost
+                    totalCost: result.totalCost,
                 },
             });
         } else {
@@ -167,7 +163,79 @@ exports.universalEthTransfer = async(req, res) => {
             });
         }
     } catch (error) {
-        console.error("Error in universalEthTransfer:", error);
+        console.error("Error transferring ETH:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+
+};
+
+exports.importWalletFromPrivateKey = async(req, res) => {
+    try {
+        const { privateKey, accountName, addressType } = req.body;
+        console.log(
+            "++++++++++++>privateKey:",
+            privateKey,
+            accountName,
+            addressType
+        );
+        // Validate inputs
+        if (!privateKey || !accountName || !addressType) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required parameters: privateKey, accountName, or addressType",
+            });
+        }
+
+        // Create a wallet instance from the private key
+        const wallet = new ethers.Wallet(privateKey);
+
+        // Check if the wallet already exists in the database
+        const existingWallet = await Wallet.findOne({
+            address: wallet.address,
+            addressType,
+        });
+        if (existingWallet) {
+            return res.status(400).json({
+                success: false,
+                message: "Wallet already exists in the database",
+            });
+        }
+        // Create a provider to fetch the balance
+        const provider = new ethers.JsonRpcProvider(
+            `https://eth-sepolia.g.alchemy.com/v2/fDVyRKUELxC6pGpxxG2M7eVc7ErbTI4t`
+        );
+        // Fetch the wallet balance
+        const balanceInWei = await provider.getBalance(wallet.address);
+        const balanceInEther = parseFloat(ethers.formatEther(balanceInWei));
+        console.log("balanceInEther:", balanceInEther);
+
+        // Save the wallet in the database
+        const newWallet = await Wallet.create({
+            user: req.userId, // Assuming `req.userId` contains the authenticated user's ID
+            addressType,
+            accountName,
+            address: wallet.address,
+            privateKey: privateKey, // Encrypt this in production
+            balance: balanceInEther, // Default balance
+            createdAt: new Date(),
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Wallet imported successfully",
+            wallet: {
+                id: newWallet._id,
+                address: newWallet.address,
+                accountName: newWallet.accountName,
+                addressType: newWallet.addressType,
+                balance: newWallet.balance,
+            },
+        });
+    } catch (error) {
+        console.error("Error importing wallet:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error",
