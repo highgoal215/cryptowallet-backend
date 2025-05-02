@@ -9,19 +9,30 @@ const {
     generateTronWallet,
 } = require("../utils/wallet.utils");
 const ethers = require("ethers");
-// interface AuthRequest extends Request {
-//   userId: string;
-// }
 
-// const getProvider = () => {
-//     const Infura_API_Key = process.env.Infura_API_key;
-//     if (!Infura_API_Key) {
-//         throw new Error("Infura API key is not defined in environment variables");
-//     }
-//     return new ethers.JsonRpcProvider(
-//         `https://eth-sepolia.g.alchemy.com/v2/fDVyRKUELxC6pGpxxG2M7eVc7ErbTI4t`
-//     );
-// };
+// Encryption key (store this securely in environment variables)
+const ENCRYPTION_KEY =
+    process.env.ENCRYPTION_KEY; // Must be 32 bytes
+const IV_LENGTH = 16; // Initialization vector length
+// Function to encrypt data
+function encrypt(text) {
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+// Function to decrypt data
+function decrypt(text) {
+    const textParts = text.split(":");
+    const iv = Buffer.from(textParts.shift(), "hex");
+    const encryptedText = Buffer.from(textParts.join(":"), "hex");
+    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+}
 
 exports.createWallet = async(req, res) => {
     const { addressType, accountName } = req.body;
@@ -37,13 +48,16 @@ exports.createWallet = async(req, res) => {
         } else {
             return res.status(400).json({ msg: "Unsupported wallet type" });
         }
-
+        // Encrypt the private key before saving
+        const encryptedPrivateKey = encrypt(walletData.privateKey);
+        console.log("--------->encryptedPrivateKey", encryptedPrivateKey);
         const wallet = await Wallet.create({
             user: req.userId,
             addressType,
             accountName,
             address: walletData.address,
-            privateKey: walletData.privateKey, // Encrypt in production
+            // privateKey: walletData.privateKey, // Encrypt in production
+            privateKey: encryptedPrivateKey, // Encrypt in production
             balance: 0,
             createdAt: new Date(),
         });
@@ -93,7 +107,8 @@ exports.universalEthTransfer = async(req, res) => {
                 message: "Sender wallet not found",
             });
         }
-        const SendPrivateKey = senderwallet.privateKey;
+        const SendPrivateKey = decrypt(senderwallet.privateKey);
+        console.log("++++++++++++>===========>SendPrivateKey:", SendPrivateKey);
         const result = await transferEth(SendPrivateKey, toAddress, amountNum);
         console.log("++++++++++++>===========>result:", result);
         if (result.success == true) {
@@ -211,14 +226,16 @@ exports.importWalletFromPrivateKey = async(req, res) => {
         const balanceInWei = await provider.getBalance(wallet.address);
         const balanceInEther = parseFloat(ethers.formatEther(balanceInWei));
         console.log("balanceInEther:", balanceInEther);
-
+        // Encrypt the private key before saving
+        const encryptedPrivateKey = encrypt(privateKey);
         // Save the wallet in the database
         const newWallet = await Wallet.create({
             user: req.userId, // Assuming `req.userId` contains the authenticated user's ID
             addressType,
             accountName,
             address: wallet.address,
-            privateKey: privateKey, // Encrypt this in production
+            // privateKey: privateKey, // Encrypt this in production
+            privateKey: encryptedPrivateKey, // Encrypt this in production
             balance: balanceInEther, // Default balance
             createdAt: new Date(),
         });
