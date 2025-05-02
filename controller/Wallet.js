@@ -84,6 +84,7 @@ exports.universalEthTransfer = async (req, res) => {
 
     // Validate amount is a positive number
     const amountNum = parseFloat(amount);
+    console.log("++++++++++++>amountNum:", amountNum);
     if (isNaN(amountNum) || amountNum <= 0) {
       return res.status(400).json({
         success: false,
@@ -91,6 +92,7 @@ exports.universalEthTransfer = async (req, res) => {
       });
     }
     const amountInWei = ethers.parseUnits(amount.toString(), "ether");
+    console.log("++++++++++++))))))>amountInWei:", amountInWei);
     // Execute the transfer with the provided private key
     const result = await transferEth(fromPrivateKey, toAddress, amountInWei);
 
@@ -150,9 +152,10 @@ exports.universalEthTransfer = async (req, res) => {
           blockNumber: result.blockNumber,
           fromAddress: result.fromAddress,
           toAddress: result.toAddress,
-          amount: result.amount.toString(),
-          gasCost: result.gasCost.toString(),
-          totalCost: result.totalCost.toString(),
+          amount: result.amount,
+          gasUsed: result.gasUsed,
+          gasCost: result.gasCost,
+          totalCost: result.totalCost
         },
       });
     } else {
