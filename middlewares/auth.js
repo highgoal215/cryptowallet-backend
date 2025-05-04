@@ -29,7 +29,10 @@ exports.auth = (req, res, next) => {
 
         //verify token
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const decoded = jwt.verify(
+                token,
+                process.env.JWT_SECRET || "martin"
+            );
             console.log(decoded);
             // req.user = decoded; // Changed from res.user to req.user
             // Add user from payload

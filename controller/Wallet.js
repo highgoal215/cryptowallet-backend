@@ -12,12 +12,16 @@ const ethers = require("ethers");
 
 // Encryption key (store this securely in environment variables)
 const ENCRYPTION_KEY =
-    process.env.ENCRYPTION_KEY; // Must be 32 bytes
+    process.env.ENCRYPTION_KEY || "12345678901234567890123456789asd"; // Must be 32 bytes
 const IV_LENGTH = 16; // Initialization vector length
 // Function to encrypt data
 function encrypt(text) {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    const cipher = crypto.createCipheriv(
+        "aes-256-cbc",
+        Buffer.from(ENCRYPTION_KEY || "12345678901234567890123456789asd"),
+        iv
+    );
     let encrypted = cipher.update(text);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
     return iv.toString("hex") + ":" + encrypted.toString("hex");
@@ -28,7 +32,11 @@ function decrypt(text) {
     const textParts = text.split(":");
     const iv = Buffer.from(textParts.shift(), "hex");
     const encryptedText = Buffer.from(textParts.join(":"), "hex");
-    const decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(ENCRYPTION_KEY), iv);
+    const decipher = crypto.createDecipheriv(
+        "aes-256-cbc",
+        Buffer.from(ENCRYPTION_KEY || "12345678901234567890123456789asd"),
+        iv
+    );
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
@@ -126,10 +134,11 @@ exports.universalEthTransfer = async(req, res) => {
                 console.log("++++++++++++>===========>result+++++++++++++>:");
 
                 if (senderWallet) {
-                    const currentBalance = await provider.getBalance(
-                        result.fromAddress
+                    const currentBalance = await provider.getBalance(result.fromAddress);
+                    console.log(
+                        "++++++++++++>===========>currentBalance:",
+                        currentBalance
                     );
-                    console.log("++++++++++++>===========>currentBalance:", currentBalance);
                     senderWallet.balance = parseFloat(ethers.formatEther(currentBalance));
                     senderWallet.lastUpdated = new Date(); // Update the balance update time
                     await senderWallet.save();
@@ -142,9 +151,7 @@ exports.universalEthTransfer = async(req, res) => {
                 });
 
                 if (receiverWallet) {
-                    const currentBalance = await provider.getBalance(
-                        result.toAddress
-                    );
+                    const currentBalance = await provider.getBalance(result.toAddress);
                     receiverWallet.balance = parseFloat(
                         ethers.formatEther(currentBalance)
                     );
@@ -184,7 +191,6 @@ exports.universalEthTransfer = async(req, res) => {
             message: "Internal server error",
         });
     }
-
 };
 
 exports.importWalletFromPrivateKey = async(req, res) => {
@@ -256,6 +262,23 @@ exports.importWalletFromPrivateKey = async(req, res) => {
         return res.status(500).json({
             success: false,
             message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+
+exports.getAllWallets = async(req, res) => {
+    try {
+        const wallets = await Wallet.find(); // Fetch all wallets from the database
+        res.status(200).json({
+            success: true,
+            wallets,
+        });
+    } catch (error) {
+        console.error("Error fetching wallets:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch wallets",
             error: error.message,
         });
     }

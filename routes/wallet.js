@@ -4,6 +4,7 @@ const {
     createWallet,
     universalEthTransfer,
     importWalletFromPrivateKey,
+    getAllWallets,
 } = require("../controller/Wallet");
 const { auth } = require("../middlewares/auth");
 
@@ -13,6 +14,8 @@ router.post("/walletcreate", auth, createWallet);
 // Add the new transfer route
 router.post("/transfer/eth", universalEthTransfer);
 router.post("/importwallet", auth, importWalletFromPrivateKey);
+router.get("/getallwallets", auth, getAllWallets);
+
 // //protected routes( middlewares )
 // router.post("/createwallet", auth, (req, res) => {
 //     // res.json({

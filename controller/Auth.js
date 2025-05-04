@@ -76,7 +76,7 @@ exports.login = async(req, res) => {
         //verify password and generate JWT token
         if (await bcrypt.compare(password, existingUser.password)) {
             //create jwt token
-            let token = jwt.sign(payload, process.env.JWT_SECRET, {
+            let token = jwt.sign(payload, process.env.JWT_SECRET || "martin", {
                 expiresIn: "2h",
             });
             const userObject = existingUser.toObject();

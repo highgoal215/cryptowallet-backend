@@ -7,7 +7,9 @@ const dbConnect = () => {
     //     useUnifiedTopology: true,
     //   };
 
-    mongoose.connect(process.env.MONGO_URI);
+    mongoose.connect(
+        process.env.MONGO_URI || "mongodb://localhost:27017/cryptowallet"
+    );
 
     mongoose.connection.on("connected", () => {
         console.log("Connected to database successfully");
