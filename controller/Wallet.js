@@ -196,12 +196,6 @@ exports.universalEthTransfer = async(req, res) => {
 exports.importWalletFromPrivateKey = async(req, res) => {
     try {
         const { privateKey, accountName, addressType } = req.body;
-        console.log(
-            "++++++++++++>privateKey:",
-            privateKey,
-            accountName,
-            addressType
-        );
         // Validate inputs
         if (!privateKey || !accountName || !addressType) {
             return res.status(400).json({
@@ -210,10 +204,7 @@ exports.importWalletFromPrivateKey = async(req, res) => {
             });
         }
 
-        // Create a wallet instance from the private key
         const wallet = new ethers.Wallet(privateKey);
-
-        // Check if the wallet already exists in the database
         const existingWallet = await Wallet.findOne({
             address: wallet.address,
             addressType,
@@ -232,7 +223,6 @@ exports.importWalletFromPrivateKey = async(req, res) => {
         const balanceInWei = await provider.getBalance(wallet.address);
         const balanceInEther = parseFloat(ethers.formatEther(balanceInWei));
         console.log("balanceInEther:", balanceInEther);
-        // Encrypt the private key before saving
         const encryptedPrivateKey = encrypt(privateKey);
         // Save the wallet in the database
         const newWallet = await Wallet.create({

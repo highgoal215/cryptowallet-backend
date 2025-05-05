@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const app = express();
 
 require("dotenv").config();
@@ -12,6 +13,13 @@ app.use(express.json());
 
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
+
+app.use(
+    cors({
+        origin: "http://localhost:8080",
+        credentials: true,
+    })
+);
 
 const userRouter = require("./routes/user");
 const walletRouter = require("./routes/wallet");

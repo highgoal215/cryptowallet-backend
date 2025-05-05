@@ -33,6 +33,7 @@ exports.signUp = async(req, res) => {
         });
         res.status(200).json({
             success: true,
+            user: newUser,
             message: "User created successfully",
         });
     } catch (error) {
@@ -80,7 +81,6 @@ exports.login = async(req, res) => {
                 expiresIn: "2h",
             });
             const userObject = existingUser.toObject();
-
 
             userObject.token = token;
             userObject.password = undefined;
